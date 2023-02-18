@@ -35,7 +35,7 @@ class BalanceTest extends TestCase
 
     public function testAddForUser1(): void
     {
-        $route = route('balance.add');
+        $route = route('balance.add', $this->user1);
 
         $body = [
             'user_id' => $this->user1->id,
@@ -54,7 +54,7 @@ class BalanceTest extends TestCase
 
     public function testAddForUser2(): void
     {
-        $route = route('balance.add');
+        $route = route('balance.add', $this->user2);
 
         $count = 130.05;
 
@@ -73,4 +73,80 @@ class BalanceTest extends TestCase
         ]);
     }
 
+    public function testWriteOffForUser1(): void
+    {
+        $route = route('balance.write_off', $this->user1);
+
+        $body = [
+            'user_id' => $this->user1->id,
+            'count' => 130.05,
+        ];
+
+        $response = $this->postJson($route, $body);
+
+        $response->assertStatus(400);
+    }
+
+    public function writeOffUser2Provider(): array
+    {
+        return [
+            [50.0, 200],
+            [100.0, 200],
+            [150.0, 400],
+        ];
+    }
+
+    /**
+     * @dataProvider writeOffUser2Provider
+     */
+    public function testWriteOffForUser2(float $count, int $statusCode): void
+    {
+        $route = route('balance.write_off', $this->user2);
+
+        $body = [
+            'user_id' => $this->user2->id,
+            'count' => $count,
+        ];
+
+        $response = $this->postJson($route, $body);
+
+        $response->assertStatus($statusCode);
+
+        $response->dump();
+
+        if ($statusCode === 200) {
+            $this->assertDatabaseHas('balances', [
+                'user_id' => $this->user2->id,
+                'balance' => $this->user2Balance->balance - $count,
+            ]);
+        }
+    }
+
+    public function testShowForUser1(): void
+    {
+        $route = route('balance.show', $this->user1);
+
+        $response = $this->getJson($route);
+
+        $response->assertOk();
+
+        $response->assertJsonFragment([
+            'user_id' => $this->user1->id,
+            'balance' => 0,
+        ]);
+    }
+
+    public function testShowForUser2(): void
+    {
+        $route = route('balance.show', $this->user2);
+
+        $response = $this->getJson($route);
+
+        $response->assertOk();
+
+        $response->assertJsonFragment([
+            'user_id' => $this->user2->id,
+            'balance' => (string) $this->user2Balance->balance,
+        ]);
+    }
 }

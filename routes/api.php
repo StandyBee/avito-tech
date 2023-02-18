@@ -15,4 +15,9 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::post('/balance/add', [BalanceController::class, 'add'])->name('balance.add');
+Route::post('/users/{user}/balance/add', [BalanceController::class, 'add'])
+    ->name('balance.add');
+Route::post('/users/{user}/balance/write_off', [BalanceController::class, 'writeOff'])
+    ->name('balance.write_off');
+Route::get('/users/{user}/balance', [BalanceController::class, 'show'])
+    ->name('balance.show');

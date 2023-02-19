@@ -5,8 +5,12 @@ namespace Tests\Feature;
 // use Illuminate\Foundation\Testing\RefreshDatabase;
 use App\Models\Balance;
 use App\Models\User;
+use App\Services\BalanceService;
+use App\Services\CurrencyConverterService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Mockery;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 class BalanceTest extends TestCase
@@ -44,7 +48,7 @@ class BalanceTest extends TestCase
 
         $response = $this->postJson($route, $body);
 
-        $response->assertOk();
+        $response->assertCreated();
 
         $this->assertDatabaseHas('balances', [
             'user_id' => $this->user1->id,
@@ -146,7 +150,7 @@ class BalanceTest extends TestCase
 
         $response->assertJsonFragment([
             'user_id' => $this->user2->id,
-            'balance' => (string) $this->user2Balance->balance,
+            'balance' => (string)$this->user2Balance->balance,
         ]);
     }
 
@@ -164,7 +168,7 @@ class BalanceTest extends TestCase
      */
     public function testSendToUser($count, $statusCode): void
     {
-        $route = route('balance.send_to',[
+        $route = route('balance.send_to', [
             'sender' => $this->user2,
             'recipient' => $this->user1,
         ]);
@@ -177,6 +181,7 @@ class BalanceTest extends TestCase
 
         $response->assertStatus($statusCode);
 
+        $response->dump();
         if ($statusCode === 200) {
             $this->assertDatabaseHas('balances', [
                 'user_id' => $this->user1->id,
@@ -187,5 +192,43 @@ class BalanceTest extends TestCase
                 'balance' => $this->user2Balance->balance - $count,
             ]);
         }
+    }
+
+    public function testShowCurrency(): void
+    {
+        $currency = 'USD';
+        $rate = 75.0;
+
+        $this->instance(
+            CurrencyConverterService::class,
+            Mockery::mock(
+                CurrencyConverterService::class,
+                function (MockInterface $mock) use ($currency) {
+                    $rate = 75.0;
+                    $mock->shouldReceive('convert')
+                        ->once()
+                        ->andReturn([
+                            'from_currency' => BalanceService::APP_CURRENCY,
+                            'to_currency' => $currency,
+                            'from_amount' => $this->user2Balance->balance,
+                            'to_amount' => $this->user2Balance->balance / $rate,
+                            'rate' => $rate,
+                        ]);
+                })
+        );
+
+        $route = route('balance.show', [
+            'user' => $this->user2,
+            'currency' => $currency,
+        ]);
+
+        $response = $this->getJson($route);
+        $response->assertOk();
+
+        $response->assertJsonFragment([
+            'user_id' => $this->user2->id,
+            'balance' => $this->user2Balance->balance / $rate,
+            'currency' => $currency,
+        ]);
     }
 }

@@ -5,10 +5,16 @@ namespace App\Services;
 use App\Exceptions\BalanceServiceException;
 use App\Models\Balance;
 use App\Models\User;
+use Exception;
 use Illuminate\Support\Facades\DB;
 
 class BalanceService
 {
+    public const APP_CURRENCY = 'RUB';
+
+    /**
+     * @throws BalanceServiceException
+     */
     public function writeOff(User $user, float $count): Balance
     {
         $balance = Balance::firstOrNew([
@@ -35,6 +41,9 @@ class BalanceService
         return $balance;
     }
 
+    /**
+     * @throws BalanceServiceException
+     */
     public function sendTo(User $sender, User $recipient, float $count): array
     {
         try {
@@ -44,7 +53,7 @@ class BalanceService
             $recipientBalance = $this->add($recipient, $count);
 
             DB::commit();
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             DB::rollBack();
 
             throw $exception;

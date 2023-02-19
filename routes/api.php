@@ -21,3 +21,5 @@ Route::post('/users/{user}/balance/write_off', [BalanceController::class, 'write
     ->name('balance.write_off');
 Route::get('/users/{user}/balance', [BalanceController::class, 'show'])
     ->name('balance.show');
+Route::post('/users/{sender}/balance/send_to/{recipient}', [BalanceController::class, 'sendTo'])
+    ->name('balance.send_to');

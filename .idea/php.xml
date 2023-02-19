@@ -294,6 +294,7 @@
   <component name="PhpUnit">
     <phpunit_settings>
       <phpunit_by_interpreter interpreter_id="ff211a3a-b2a5-4f22-8602-658cce7f11b4" configuration_file_path="/home/fisak/avito-tech/phpunit.xml" custom_loader_path="/home/fisak/avito-tech/vendor/autoload.php" phpunit_phar_path="" use_configuration_file="true" />
+      <PhpUnitSettings configuration_file_path="$PROJECT_DIR$/phpunit.xml" custom_loader_path="$PROJECT_DIR$/vendor/autoload.php" use_configuration_file="true" />
     </phpunit_settings>
   </component>
 </project>

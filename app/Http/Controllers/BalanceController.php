@@ -2,36 +2,50 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TransactionType;
 use App\Http\Requests\BalanceRequest;
 use App\Http\Resources\BalanceResource;
 use App\Models\Balance;
 use App\Models\User;
 use App\Services\BalanceService;
 use App\Services\CurrencyConverterService;
-use Illuminate\Http\JsonResponse;
+use App\Services\TransactionService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class BalanceController extends Controller
 {
     private BalanceService $balanceService;
     private CurrencyConverterService $converterService;
+    private TransactionService $transactionService;
 
-    public function __construct(BalanceService $balanceService, CurrencyConverterService $converterService)
+    public function __construct(
+        BalanceService $balanceService,
+        CurrencyConverterService $converterService,
+        TransactionService $transactionService
+    )
     {
         $this->balanceService = $balanceService;
         $this->converterService = $converterService;
+        $this->transactionService = $transactionService;
     }
 
     public function add(BalanceRequest $request, User $user): BalanceResource
     {
-        $balance = $this->balanceService->add($user, $request->get('count'));
+        $count = $request->get('count');
+        $balance = $this->balanceService->add($user, $count);
+
+        $this->transactionService->commit(TransactionType::Add, $count, $balance);
 
         return new BalanceResource($balance);
     }
 
     public function writeOff(BalanceRequest $request, User $user): BalanceResource
     {
-        $balance = $this->balanceService->writeOff($user, $request->get('count'));
+        $count = $request->get('count');
+        $balance = $this->balanceService->writeOff($user, $count);
+
+        $this->transactionService->commit(TransactionType::WriteOff, $count, $balance);
 
         return new BalanceResource($balance);
     }
@@ -65,9 +79,12 @@ class BalanceController extends Controller
         return $resource;
     }
 
-    public function sendTo(BalanceRequest $request, User $sender, User $recipient)
+    public function sendTo(BalanceRequest $request, User $sender, User $recipient): AnonymousResourceCollection
     {
-        $result = $this->balanceService->sendTo($sender, $recipient, $request->get('count'));
+        $count = $request->get('count');
+        $result = $this->balanceService->sendTo($sender, $recipient, $count);
+
+        $this->transactionService->commit(TransactionType::SendTo, $count, $result);
 
         return BalanceResource::collection($result);
     }

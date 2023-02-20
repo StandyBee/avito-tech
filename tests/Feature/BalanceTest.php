@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 // use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Enums\TransactionType;
 use App\Models\Balance;
 use App\Models\User;
 use App\Services\BalanceService;
@@ -43,7 +44,7 @@ class BalanceTest extends TestCase
 
         $body = [
             'user_id' => $this->user1->id,
-            'count' => 130.05,
+            'count' => "130.05",
         ];
 
         $response = $this->postJson($route, $body);
@@ -53,6 +54,16 @@ class BalanceTest extends TestCase
         $this->assertDatabaseHas('balances', [
             'user_id' => $this->user1->id,
             'balance' => 130.05,
+        ]);
+
+        $balance = Balance::whereUserId($this->user1->id)->first();
+        $balance['balance'] = (float) $balance['balance'];
+
+        $this->assertDatabaseHas('transactions', [
+            'type' => TransactionType::Add,
+            'count' => $body['count'],
+            'info' => $balance->toJson(),
+            'created_at' => now(),
         ]);
     }
 
@@ -122,6 +133,16 @@ class BalanceTest extends TestCase
             $this->assertDatabaseHas('balances', [
                 'user_id' => $this->user2->id,
                 'balance' => $this->user2Balance->balance - $count,
+            ]);
+
+            $balance = Balance::whereUserId($this->user2->id)->first();
+            $balance['balance'] = (float) $balance['balance'];
+
+            $this->assertDatabaseHas('transactions', [
+                'type' => TransactionType::WriteOff,
+                'count' => $body['count'],
+                'info' => $balance->toJson(),
+                'created_at' => now(),
             ]);
         }
     }

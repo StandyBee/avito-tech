@@ -5,6 +5,7 @@ namespace Tests\Feature;
 // use Illuminate\Foundation\Testing\RefreshDatabase;
 use App\Enums\TransactionType;
 use App\Models\Balance;
+use App\Models\Transaction;
 use App\Models\User;
 use App\Services\BalanceService;
 use App\Services\CurrencyConverterService;
@@ -57,13 +58,17 @@ class BalanceTest extends TestCase
         ]);
 
         $balance = Balance::whereUserId($this->user1->id)->first();
-        $balance['balance'] = (float) $balance['balance'];
+        $balance['balance'] = (float)$balance['balance'];
 
         $this->assertDatabaseHas('transactions', [
             'type' => TransactionType::Add,
             'count' => $body['count'],
             'info' => $balance->toJson(),
             'created_at' => now(),
+        ]);
+
+        $this->assertDatabaseHas('transaction_user', [
+            'user_id' => $this->user1->id,
         ]);
     }
 
@@ -129,22 +134,23 @@ class BalanceTest extends TestCase
 
         $response->dump();
 
-        if ($statusCode === 200) {
-            $this->assertDatabaseHas('balances', [
-                'user_id' => $this->user2->id,
-                'balance' => $this->user2Balance->balance - $count,
-            ]);
-
-            $balance = Balance::whereUserId($this->user2->id)->first();
-            $balance['balance'] = (float) $balance['balance'];
-
-            $this->assertDatabaseHas('transactions', [
-                'type' => TransactionType::WriteOff,
-                'count' => $body['count'],
-                'info' => $balance->toJson(),
-                'created_at' => now(),
-            ]);
+        if ($statusCode !== 200) {
+            return;
         }
+        $this->assertDatabaseHas('balances', [
+            'user_id' => $this->user2->id,
+            'balance' => $this->user2Balance->balance - $count,
+        ]);
+
+        $balance = Balance::whereUserId($this->user2->id)->first();
+        $balance['balance'] = (float)$balance['balance'];
+
+        $this->assertDatabaseHas('transactions', [
+            'type' => TransactionType::WriteOff,
+            'count' => $body['count'],
+            'info' => $balance->toJson(),
+            'created_at' => now(),
+        ]);
     }
 
     public function testShowForUser1(): void
@@ -203,19 +209,41 @@ class BalanceTest extends TestCase
         $response->assertStatus($statusCode);
 
         $response->dump();
-        if ($statusCode === 200) {
-            $this->assertDatabaseHas('balances', [
-                'user_id' => $this->user1->id,
-                'balance' => $count,
-            ]);
-            $this->assertDatabaseHas('balances', [
-                'user_id' => $this->user2->id,
-                'balance' => $this->user2Balance->balance - $count,
-            ]);
+        if ($statusCode !== 200) {
+            return;
         }
+        $this->assertDatabaseHas('balances', [
+            'user_id' => $this->user1->id,
+            'balance' => $count,
+        ]);
+
+        $this->assertDatabaseHas('balances', [
+            'user_id' => $this->user2->id,
+            'balance' => $this->user2Balance->balance - $count,
+        ]);
+
+        $this->assertDatabaseHas('transactions', [
+            'type' => TransactionType::SendTo,
+            'count' => $count, // $body['count']
+            'info->sender_balance->user_id' => $this->user2->id,
+            'info->recipient_balance->user_id' => $this->user1->id,
+            'created_at' => now(),
+        ]);
+
+        $transactionId = Transaction::first()->id;
+        $this->assertDatabaseHas('transaction_user', [
+            'transaction_id' => $transactionId,
+            'user_id' => $this->user1->id,
+        ]);
+
+        $this->assertDatabaseHas('transaction_user', [
+            'transaction_id' => $transactionId,
+            'user_id' => $this->user2->id,
+        ]);
     }
 
-    public function testShowCurrency(): void
+    public
+    function testShowCurrency(): void
     {
         $currency = 'USD';
         $rate = 75.0;

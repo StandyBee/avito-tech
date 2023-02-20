@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BalanceController;
+use App\Http\Controllers\TransactionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -23,3 +24,8 @@ Route::get('/users/{user}/balance', [BalanceController::class, 'show'])
     ->name('balance.show');
 Route::post('/users/{sender}/balance/send_to/{recipient}', [BalanceController::class, 'sendTo'])
     ->name('balance.send_to');
+
+Route::resource('/users/{user}/transactions', TransactionController::class)
+    ->only('index');
+
+

@@ -53,7 +53,7 @@ class BalanceController extends Controller
     {
         $count = $request->get('count');
 
-        $balance = DB::transaction(function () use ($user, $count){
+        $balance = DB::transaction(function () use ($user, $count) {
             $balance = $this->balanceService->writeOff($user, $count);
 
             $this->transactionService->commit(TransactionType::WriteOff, $count, $balance);
